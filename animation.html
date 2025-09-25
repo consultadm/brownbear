@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Face with Blinking Eyes</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            margin: 20px;
+        }
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .subtitle {
+            color: #e0e0ff;
+            margin-bottom: 30px;
+        }
+        .face-container {
+            position: relative;
+            margin: 0 auto;
+            width: 320px;
+            height: 320px;
+        }
+        canvas {
+            border-radius: 50%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            background: #FFE0B2;
+        }
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        button {
+            background: #4A00E0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        button:hover {
+            background: #8E2DE2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        .info {
+            margin-top: 25px;
+            color: #e0e0ff;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .feature-list {
+            text-align: left;
+            display: inline-block;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Face with Blinking Eyes</h1>
+        <p class="subtitle">A friendly cartoon face with smooth blinking animation</p>
+        
+        <div class="face-container">
+            <canvas id="faceCanvas" width="320" height="320"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="blinkBtn">Trigger Blink</button>
+            <button id="happyBtn">Happy Expression</button>
+            <button id="surprisedBtn">Surprised Expression</button>
+            <button id="resetBtn">Reset Expression</button>
+        </div>
+        
+        <div class="info">
+            <p>This interactive face demonstrates smooth blinking animation and expression changes. The eyes blink automatically every few seconds, but you can also trigger a blink manually.</p>
+            
+            <div class="feature-list">
+                <p><strong>Features:</strong></p>
+                <ul>
+                    <li>Natural blinking animation with smooth transitions</li>
+                    <li>Interactive expression changes</li>
+                    <li>Eye highlights that move with the pupils</li>
+                    <li>Responsive design that works on different screen sizes</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('faceCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Face parameters
+        const face = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 150,
+            color: '#FFE0B2'
+        };
+        
+        // Eye parameters
+        const eyes = {
+            left: { x: face.x - 50, y: face.y - 20 },
+            right: { x: face.x + 50, y: face.y - 20 },
+            width: 40,
+            height: 25,
+            color: '#8B4513',
+            pupilColor: '#000',
+            highlightColor: '#FFF',
+            blinkProgress: 0, // 0 = open, 1 = closed
+            blinkSpeed: 0.1,
+            isBlinking: false
+        };
+        
+        // Eyebrow parameters
+        const eyebrows = {
+            left: { x: face.x - 50, y: face.y - 50 },
+            right: { x: face.x + 50, y: face.y - 50 },
+            width: 45,
+            height: 10,
+            color: '#5D4037',
+            angle: 0 // For expression changes
+        };
+        
+        // Nose parameters
+        const nose = {
+            x: face.x,
+            y: face.y + 30,
+            width: 30,
+            height: 25,
+            color: '#FFCCBC'
+        };
+        
+        // Mouth parameters
+        const mouth = {
+            x: face.x,
+            y: face.y + 70,
+            width: 60,
+            height: 20,
+            color: '#E91E63',
+            curve: 0 // For expression changes
+        };
+        
+        // Animation control
+        let blinkInterval;
+        let lastBlinkTime = 0;
+        const blinkDelay = 3000; // Time between blinks in ms
+        
+        // Initialize the face
+        function init() {
+            drawFace();
+            startBlinking();
+            setupEventListeners();
+        }
+        
+        // Draw the complete face
+        function drawFace() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw face
+            ctx.beginPath();
+            ctx.arc(face.x, face.y, face.radius, 0, Math.PI * 2);
+            ctx.fillStyle = face.color;
+            ctx.fill();
+            ctx.strokeStyle = '#FFCC80';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Draw eyebrows with expression
+            drawEyebrow(eyebrows.left, eyebrows.angle);
+            drawEyebrow(eyebrows.right, -eyebrows.angle);
+            
+            // Draw eyes with blinking effect
+            drawEye(eyes.left);
+            drawEye(eyes.right);
+            
+            // Draw nose
+            drawNose();
+            
+            // Draw mouth with expression
+            drawMouth();
+        }
+        
+        // Draw an eyebrow with rotation
+        function drawEyebrow(eyebrow, angle) {
+            ctx.save();
+            ctx.translate(eyebrow.x, eyebrow.y);
+            ctx.rotate(angle * Math.PI / 180);
+            
+            ctx.beginPath();
+            ctx.ellipse(0, 0, eyebrows.width, eyebrows.height, 0, 0, Math.PI * 2);
+            ctx.fillStyle = eyebrows.color;
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Draw an eye with blinking effect
+        function drawEye(eye) {
+            // Calculate current eye height based on blink progress
+            const currentHeight = eyes.height * (1 - eyes.blinkProgress);
+            
+            // Draw eye white
+            ctx.beginPath();
+            ctx.ellipse(eye.x, eye.y, eyes.width, currentHeight, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFF';
+            ctx.fill();
+            ctx.strokeStyle = eyes.color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Only draw pupil and highlight if eye is open enough
+            if (eyes.blinkProgress < 0.7) {
+                // Draw pupil
+                ctx.beginPath();
+                ctx.arc(eye.x, eye.y, eyes.width / 3, 0, Math.PI * 2);
+                ctx.fillStyle = eyes.pupilColor;
+                ctx.fill();
+                
+                // Draw highlight
+                ctx.beginPath();
+                ctx.arc(eye.x - 8, eye.y - 5, 5, 0, Math.PI * 2);
+                ctx.fillStyle = eyes.highlightColor;
+                ctx.fill();
+            }
+        }
+        
+        // Draw the nose
+        function drawNose() {
+            ctx.beginPath();
+            ctx.ellipse(nose.x, nose.y, nose.width, nose.height, 0, 0, Math.PI * 2);
+            ctx.fillStyle = nose.color;
+            ctx.fill();
+            ctx.strokeStyle = '#FFAB91';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw nostrils
+            ctx.beginPath();
+            ctx.arc(nose.x - 10, nose.y + 5, 5, 0, Math.PI * 2);
+            ctx.arc(nose.x + 10, nose.y + 5, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#FF8A65';
+            ctx.fill();
+        }
+        
+        // Draw the mouth with expression
+        function drawMouth() {
+            ctx.beginPath();
+            
+            if (mouth.curve === 0) {
+                // Neutral mouth
+                ctx.ellipse(mouth.x, mouth.y, mouth.width, mouth.height, 0, 0, Math.PI);
+            } else if (mouth.curve > 0) {
+                // Happy mouth
+                ctx.arc(mouth.x, mouth.y, mouth.width, 0, Math.PI);
+            } else {
+                // Sad/surprised mouth
+                ctx.arc(mouth.x, mouth.y + mouth.height, mouth.width, Math.PI, 0, true);
+            }
+            
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = mouth.color;
+            ctx.stroke();
+        }
+        
+        // Start the automatic blinking
+        function startBlinking() {
+            blinkInterval = setInterval(() => {
+                const currentTime = Date.now();
+                if (currentTime - lastBlinkTime > blinkDelay && !eyes.isBlinking) {
+                    triggerBlink();
+                }
+            }, 100);
+        }
+        
+        // Trigger a blink animation
+        function triggerBlink() {
+            if (eyes.isBlinking) return;
+            
+            eyes.isBlinking = true;
+            lastBlinkTime = Date.now();
+            
+            function blink() {
+                eyes.blinkProgress += eyes.blinkSpeed;
+                
+                if (eyes.blinkProgress >= 1) {
+                    eyes.blinkProgress = 1;
+                    setTimeout(() => {
+                        // Start opening eyes
+                        function openEyes() {
+                            eyes.blinkProgress -= eyes.blinkSpeed;
+                            
+                            if (eyes.blinkProgress <= 0) {
+                                eyes.blinkProgress = 0;
+                                eyes.isBlinking = false;
+                            } else {
+                                requestAnimationFrame(openEyes);
+                            }
+                            
+                            drawFace();
+                        }
+                        
+                        openEyes();
+                    }, 100);
+                } else {
+                    requestAnimationFrame(blink);
+                }
+                
+                drawFace();
+            }
+            
+            blink();
+        }
+        
+        // Change expression
+        function setExpression(eyebrowAngle, mouthCurve) {
+            eyebrows.angle = eyebrowAngle;
+            mouth.curve = mouthCurve;
+            drawFace();
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            document.getElementById('blinkBtn').addEventListener('click', triggerBlink);
+            
+            document.getElementById('happyBtn').addEventListener('click', () => {
+                setExpression(-10, 10);
+            });
+            
+            document.getElementById('surprisedBtn').addEventListener('click', () => {
+                setExpression(15, -10);
+            });
+            
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                setExpression(0, 0);
+            });
+            
+            // Make the face interactive - click on face to trigger blink
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Check if click is within face
+                const distance = Math.sqrt(
+                    Math.pow(x - face.x, 2) + Math.pow(y - face.y, 2)
+                );
+                
+                if (distance <= face.radius) {
+                    triggerBlink();
+                }
+            });
+        }
+        
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
